@@ -1,0 +1,56 @@
+device: cuda:0
+
+model:
+  module: nablasian.zoo.detection
+  name: RetinaNet
+  args:
+    num_in_ch: 3
+    num_classes: 1
+    num_anchor_boxes: 9
+    use_sigmoid: True
+    path: ./fa-hi-bo-rn-50-6x-v3.py
+    sub_net_depth: 4
+  pretrained: ./fa-hi-bo-rn-50-6x-v3.pth
+
+anchor_box_generators:
+  module: nablasian.solvers.detection.generators
+  name: AnchorBoxGenerator
+  size:
+  - 16
+  stride:
+  - 4
+  args:
+    scale:
+    - 1.0
+    - 4.0
+    - 8.0
+    ratio:
+    - 0.25
+    - 0.50
+    - 1.00
+    center:
+    device: cuda:0
+
+transform:
+  - name: Scale
+    args:
+      size: 300
+  - name: ToTensor
+    args:
+
+post_processing:
+  pre_mean:
+  - 0
+  - 0
+  - 0
+  - 0
+  pre_std:
+  - 1
+  - 1
+  - 1
+  - 1
+  pre_nms: 100
+  use_sigmoid: True
+  post_nms: 5
+  score_th: 0.5
+  iou_th: 0.1
