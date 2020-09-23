@@ -1,5 +1,4 @@
 device: cuda:0
-
 model:
   module: nablasian.zoo.detection
   name: RetinaNet
@@ -11,7 +10,6 @@ model:
     path: ./fa-hi-bo-rn-50-6x-v3.py
     sub_net_depth: 4
   pretrained: ./fa-hi-bo-rn-50-6x-v3.pth
-
 anchor_box_generators:
   module: nablasian.solvers.detection.generators
   name: AnchorBoxGenerator
@@ -30,14 +28,12 @@ anchor_box_generators:
     - 1.00
     center:
     device: cuda:0
-
 transform:
   - name: Scale
     args:
       size: 300
   - name: ToTensor
     args:
-
 post_processing:
   pre_mean:
   - 0
