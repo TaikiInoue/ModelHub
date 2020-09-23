@@ -1,0 +1,4 @@
+[core]
+    remote = somic
+['remote "somic"']
+    url = azure://somic/dvc_storage
