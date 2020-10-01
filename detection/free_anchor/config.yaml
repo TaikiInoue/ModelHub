@@ -7,9 +7,9 @@ model:
     num_classes: 1
     num_anchor_boxes: 9
     use_sigmoid: True
-    path: ./fa-hi-bo-rn-50-6x-v3.py
+    path: free_anchor/fa-hi-bo-rn-50-6x-v3.py
     sub_net_depth: 4
-  pretrained: ./fa-hi-bo-rn-50-6x-v3.pth
+  pretrained: free_anchor/fa-hi-bo-rn-50-6x-v3.pth
 anchor_box_generators:
   module: nablasian.solvers.detection.generators
   name: AnchorBoxGenerator
@@ -48,5 +48,5 @@ post_processing:
   pre_nms: 100
   use_sigmoid: True
   post_nms: 5
-  score_th: 0.5
+  score_th: 0.3
   iou_th: 0.1

@@ -89,7 +89,7 @@ c.RetinaNet.backbone_cfg = {
     "num_classes": 1000,
     "replace_with_dilation": [True, True, False],
     "use_feature_only": [2],
-    "pretrain": "./ResNet50.pth"
+    "pretrain": "free_anchor/ResNet50.pth"
 }
 
 c.RetinaNet.reg_sub_cfg = {
