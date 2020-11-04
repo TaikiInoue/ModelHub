@@ -35,8 +35,6 @@ class Inspector:
                 
             for k, v in self.time_dict.items():
                 print(f"{k}: {v}")
-            
-            break
 
 
     def inference(self, stem):
