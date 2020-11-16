@@ -12,7 +12,7 @@ install_nablasian:
 				cd /app && \
 				git clone https://github.com/nablas-inc/nablasian.git && \
 				cd /app/nablasian && \
-				git checkout git checkout 0ef6a15057574068e87b9a4f637b42b3bda2cf92 && \
+				git checkout 0ef6a15057574068e87b9a4f637b42b3bda2cf92 && \
 				python3 -m pip install .
 
 download_pth:
