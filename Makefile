@@ -16,7 +16,7 @@ install_nablasian:
 				python3 -m pip install .
 
 download_pth:
-				cd /app/nablasian && \
+				cd /app/ModelHub && \
 				read -sp 'connection_string: ' CONNECTION_STRING && \
 				dvc remote modify --local somic connection_string "$CONNECTION_STRING" && \
 				dvc pull detection/free_anchor/*.pth.dvc && \
