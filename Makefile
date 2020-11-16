@@ -9,7 +9,7 @@ docker_run:
 						/bin/bash
 
 install_nablasian:
-				git clone git@github.com:nablas-inc/nablasian.git \
+				git clone https://github.com/nablas-inc/nablasian.git \
 				cd /app/nablasian \
 				git checkout 03eda2542ef04847bbe1a0905732602f484fc2d5 \
 				pip install .
