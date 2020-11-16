@@ -17,7 +17,5 @@ install_nablasian:
 
 download_pth:
 				cd /app/ModelHub && \
-				read -p 'connection_string: ' CONNECTION_STRING && \
-				dvc remote modify --local somic connection_string "$CONNECTION_STRING" && \
 				dvc pull detection/free_anchor/*.pth.dvc && \
 				cd /app
