@@ -2,7 +2,7 @@ docker_run:
 				docker run --runtime nvidia -it --privileged \
 						--network host \
 						--volume $(PWD):/app/ModelHub \
-						--workdir /app \
+						--workdir /app/ModelHub \
 						--name docker-xavier \
 						--hostname docker-xavier \
 						taikiinoue45/jetson:xavier \
