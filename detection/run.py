@@ -32,10 +32,6 @@ class Inspector:
                     # self.clean_up()
                 else:
                     continue
-                
-            for k, v in self.time_dict.items():
-                print(f"{k}: {v}")
-
 
     def inference(self, stem):
         
