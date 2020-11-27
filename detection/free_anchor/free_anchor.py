@@ -73,13 +73,11 @@ class FreeAnchor:
 
     def inference(self, img: Tensor):
         
-        t0 = time()
         meta_info = {"img_shape": [img.size()[-2:]]}
 
         with torch.no_grad():
             (mb_reg_logits, mb_cls_logits, meta_info) = self.model(img, meta_info)
 
-        t1 = time()
         mb_reg_logits = torch.cat(mb_reg_logits, dim=1)
         mb_cls_logits = torch.cat(mb_cls_logits, dim=1)
 
@@ -90,7 +88,6 @@ class FreeAnchor:
             anchor_boxes.append(self.anchor_box_generators[i](meta_info["feat_shape"][i]))
         anchor_boxes = torch.cat(anchor_boxes, dim=0)
         
-        t2 = time()
         # Remove invalid entries
         matcher = IoUBasedMatcher(self.cfg.post_processing.pre_mean, self.cfg.post_processing.pre_std)
         matcher.set_items(anchor_boxes)
@@ -99,14 +96,12 @@ class FreeAnchor:
         mb_cls_logits = mb_cls_logits[:, mask]
         anchor_boxes = anchor_boxes[mask].unsqueeze(0)
         
-        t3 = time()
         # Decode
         decoder = AnchorBoxDecoder(self.cfg.post_processing.pre_mean, self.cfg.post_processing.pre_std)
         (cl_pre_bboxes, cl_cls_logits) = decoder(
             [mb_reg_logits], [mb_cls_logits], [anchor_boxes], meta_info["img_shape"]
         )
         
-        t4 = time()
         # NMS
         nms = NMS(
             self.cfg.post_processing.score_th,
@@ -121,13 +116,5 @@ class FreeAnchor:
 
         mb_pre_bboxes = cl_pre_bboxes[0][0]
         mb_cls_logits = cl_cls_logits[0][0]
-
-        t5 = time()
-
-        print("inference: ", t1 - t0)
-        print("generate anchor boxes: ", t2 - t1)
-        print("remove invalid entries", t3 - t2)
-        print("decode", t4 - t3)
-        print("nms", t5 - t4)
 
         return mb_pre_bboxes, mb_cls_logits
