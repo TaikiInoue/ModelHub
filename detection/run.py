@@ -10,7 +10,7 @@ class Inspector:
     def __init__(self) -> None:
 
         self.model = FreeAnchor("./free_anchor/config.yaml")
-        self.ftp = FTP(host="10.3.1.3", user="somic", passwd="somic")
+        # self.ftp = FTP(host="10.3.1.3", user="somic", passwd="somic")
         self.local_base = Path(".")
         self.remote_base = Path(".")
         self.img_suffix = "jpg"
@@ -33,8 +33,8 @@ class Inspector:
 
     def start_debug(self) -> None:
 
-        self.inference("free_anchor/tobu")
-        self.inference("free_anchor/ziku")
+        img = self.model.pre_processing("free_anchor/tobu.jpg")
+        mb_bboxes, mb_scores, mb_labels = self.model.inference(img)
 
     def inference(self, stem: str) -> None:
 

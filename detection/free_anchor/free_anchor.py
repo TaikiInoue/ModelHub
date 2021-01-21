@@ -15,9 +15,9 @@ class FreeAnchor:
         self.cfg = OmegaConf.load(yaml_path)
         self.model = self._init_model()
         self.anchor_generator = self._init_anchor_generator()
-        self.transform = self._init_transforms()
+        self.transforms = self._init_transforms()
         self.nms = self._init_nms()
-        self.coder = self._init_coder
+        self.coder = self._init_coder()
 
     def _get_attr(self, name: str) -> Any:
 
@@ -65,10 +65,10 @@ class FreeAnchor:
 
         data = {}
         data["Image"] = Image.open(img_path).convert("RGB")
-        data = self.transform(data)
+        data = self.transforms(data)
         img = data["Image"]
         img = img.unsqueeze(0)
-        img = img.to(self.cfg.device)
+        img = img.to("cuda")
         return img
 
     def inference(self, mb_imgs: Tensor) -> None:
@@ -76,7 +76,8 @@ class FreeAnchor:
         with torch.no_grad():
             (cl_reg_preds, cl_cls_preds, cl_feats) = self.model(mb_imgs)
 
-        meta_info = [{"img_shape": [mb_imgs.size()[-2:]]}]
+        b, c, h, w = mb_imgs.shape
+        meta_info = [{"img_shape": (h, w)}]
         cl_anchor_boxes, cl_masks = self.anchor_generator(mb_imgs, cl_feats, meta_info)
 
         mb_bboxes = []

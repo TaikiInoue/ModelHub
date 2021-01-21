@@ -50,7 +50,7 @@ c.FPN.backbone_cfg = {
     "name": "ResNeXt101",
     "num_classes": 1000,
     "use_feature_only": [0, 1, 2, 3],
-    "pretrain": "/dgx/shared/nas/Datasets/Parameters/ResNeXt101_32x8d.pth",
+    "pretrain": "./free_anchor/ResNeXt101_32x8d.pth",
     "use_extra_conv": False
 }
 
