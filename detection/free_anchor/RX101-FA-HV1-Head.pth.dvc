@@ -1,0 +1,4 @@
+outs:
+- md5: 8134150d52ed93b1608a2a0a5d3c18c3
+  size: 380751027
+  path: RX101-FA-HV1-Head.pth
