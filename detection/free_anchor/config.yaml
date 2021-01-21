@@ -1,5 +1,3 @@
-device: cuda:0
-
 model:
   name: nablasian.zoo.detection - RetinaNet
   args:
