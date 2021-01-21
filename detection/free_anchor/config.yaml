@@ -1,52 +1,39 @@
 device: cuda:0
+
 model:
-  module: nablasian.zoo.detection
-  name: RetinaNet
+  name: nablasian.zoo.detection - RetinaNet
   args:
     num_in_ch: 3
     num_classes: 1
     num_anchor_boxes: 9
-    use_sigmoid: True
-    path: free_anchor/fa-hi-bo-rn-50-6x-v3.py
-    sub_net_depth: 4
-  pretrained: free_anchor/fa-hi-bo-rn-50-6x-v3.pth
-anchor_box_generators:
-  module: nablasian.solvers.detection.generators
-  name: AnchorBoxGenerator
-  size:
-  - 16
-  stride:
-  - 4
+    path: free_anchor/retinanet.py
+    sub_net_depth: 3
+
+anchor_generator:
+  name: nablasian.solvers.detection.generators - AnchorGenerator
   args:
-    scale:
-    - 1.0
-    - 4.0
-    - 8.0
-    ratio:
-    - 0.25
-    - 0.50
-    - 1.00
-    center:
-    device: cuda:0
-transform:
-  - name: Scale
+    sizes: [20, 40, 80, 160]
+    aspect_ratios: [0.5, 1.0, 2.0]
+    scale: 3
+
+transforms:
+  - name: nablasian.datasets.transforms - Scale
     args:
-      size: 300
-  - name: ToTensor
+      size: 800
+  - name: nablasian.datasets.transforms - ToTensor
     args:
-post_processing:
-  pre_mean:
-  - 0
-  - 0
-  - 0
-  - 0
-  pre_std:
-  - 1
-  - 1
-  - 1
-  - 1
-  pre_nms: 100
-  use_sigmoid: True
-  post_nms: 5
-  score_th: 0.3
-  iou_th: 0.1
+
+nms:
+  name: nablasian.solvers.detection.nms - NMS
+  args:
+    score_th: 0.05
+    iou_th: 0.5
+    preprocess: sigmoid
+    pre_max_num_bboxes: 1000
+    post_max_num_bboxes: 100
+    cls_agnostic: True
+
+coder:
+  name: nablasian.solvers.detection.coders - AnchorBoxCoder
+  args:
+    weights: [10, 10, 5, 5]

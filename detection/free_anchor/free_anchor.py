@@ -1,64 +1,65 @@
 from importlib import import_module
-from time import time
+from typing import Any, Callable
 
-import nablasian.datasets
 import torch
 from nablasian.datasets import Composite
-from nablasian.solvers.detection.decoders import AnchorBoxDecoder
-from nablasian.solvers.detection.matchers import IoUBasedMatcher
-from nablasian.solvers.detection.nms import NMS
 from omegaconf import OmegaConf
-from omegaconf.dictconfig import DictConfig
 from PIL import Image
 from torch import Tensor
 from torch.nn import Module
 
 
 class FreeAnchor:
-
-    def __init__(self, yaml_path: str):
+    def __init__(self, yaml_path: str) -> None:
 
         self.cfg = OmegaConf.load(yaml_path)
-        self.model = self.init_model()
-        self.anchor_box_generators = self.init_anchor_box_generators()
-        self.transform = self.init_transform()
+        self.model = self._init_model()
+        self.anchor_generator = self._init_anchor_generator()
+        self.transform = self._init_transforms()
+        self.nms = self._init_nms()
+        self.coder = self._init_coder
 
+    def _get_attr(self, name: str) -> Any:
 
-    def init_model(self) -> Module:
+        module_path, attr_name = name.split(" - ")
+        module = import_module(module_path)
+        return getattr(module, attr_name)
 
-        module = import_module(self.cfg.model.module)
-        cls = getattr(module, self.cfg.model.name)
-        model = cls(**self.cfg.model.args)
-        model = model.to(self.cfg.device)
-        model.load_state_dict(torch.load(self.cfg.model.pretrained, map_location=self.cfg.device))
-        model.eval()
-        return model
+    def _init_model(self) -> Module:
 
+        cfg = self.cfg.model
+        attr = self._get_attr(cfg.name)
+        model = attr(**cfg.get("args", {}))
+        # TODO(inoue): Should move .pth path to yaml
+        model.load_state_dict(torch.load("free_anchor/RX101-FA-HV1-Head.pth", map_location="cuda"))
+        model = model.to("cuda")
+        return model.eval()
 
-    def init_anchor_box_generators(self) -> list:
+    def _init_anchor_generator(self) -> Module:
 
-        module = import_module(self.cfg.anchor_box_generators.module)
-        cls = getattr(module, self.cfg.anchor_box_generators.name)
+        cfg = self.cfg.anchor_generator
+        attr = self._get_attr(cfg.name)
+        return attr(**cfg.get("args", {}))
 
-        anchor_box_generators = []
-        for (size, stride) in zip(self.cfg.anchor_box_generators.size, self.cfg.anchor_box_generators.stride):
-            anchor_box_generators.append(cls(size, stride, **self.cfg.anchor_box_generators.args))
+    def _init_transforms(self) -> Composite:
 
-        return anchor_box_generators
+        transforms = []
+        for cfg in self.cfg.transforms:
+            attr = self._get_attr(cfg.name)
+            transforms.append(attr(**cfg.get("args", {})))
+        return Composite(transforms)
 
+    def _init_nms(self) -> Callable:
 
-    def init_transform(self) -> Composite:
+        cfg = self.cfg.nms
+        attr = self._get_attr(cfg.name)
+        return attr(**cfg.get("args", {}))
 
-        transform = []
-        for transform_cfg in self.cfg.transform:
-            cls = getattr(nablasian.datasets, transform_cfg.name)
-            if transform_cfg.args:
-                transform.append(cls(**transform_cfg.args))
-            else:
-                transform.append(cls())
+    def _init_coder(self) -> Callable:
 
-        return Composite(transform)
-
+        cfg = self.cfg.coder
+        attr = self._get_attr(cfg.name)
+        return attr(**cfg.get("args", {}))
 
     def pre_processing(self, img_path: str) -> Tensor:
 
@@ -70,51 +71,38 @@ class FreeAnchor:
         img = img.to(self.cfg.device)
         return img
 
-
-    def inference(self, img: Tensor):
-        
-        meta_info = {"img_shape": [img.size()[-2:]]}
+    def inference(self, mb_imgs: Tensor) -> None:
 
         with torch.no_grad():
-            (mb_reg_logits, mb_cls_logits, meta_info) = self.model(img, meta_info)
+            (cl_reg_preds, cl_cls_preds, cl_feats) = self.model(mb_imgs)
 
-        mb_reg_logits = torch.cat(mb_reg_logits, dim=1)
-        mb_cls_logits = torch.cat(mb_cls_logits, dim=1)
+        meta_info = [{"img_shape": [mb_imgs.size()[-2:]]}]
+        cl_anchor_boxes, cl_masks = self.anchor_generator(mb_imgs, cl_feats, meta_info)
 
-        mb_cls_logits = torch.sigmoid(mb_cls_logits)
+        mb_bboxes = []
+        mb_scores = []
+        mb_labels = []
+        for i in range(len(meta_info)):
 
-        anchor_boxes = []
-        for (i, stride) in enumerate(self.cfg.anchor_box_generators.stride):
-            anchor_boxes.append(self.anchor_box_generators[i](meta_info["feat_shape"][i]))
-        anchor_boxes = torch.cat(anchor_boxes, dim=0)
-        
-        # Remove invalid entries
-        matcher = IoUBasedMatcher(self.cfg.post_processing.pre_mean, self.cfg.post_processing.pre_std)
-        matcher.set_items(anchor_boxes)
-        mask = matcher.area > 0
-        mb_reg_logits = mb_reg_logits[:, mask]
-        mb_cls_logits = mb_cls_logits[:, mask]
-        anchor_boxes = anchor_boxes[mask].unsqueeze(0)
-        
-        # Decode
-        decoder = AnchorBoxDecoder(self.cfg.post_processing.pre_mean, self.cfg.post_processing.pre_std)
-        (cl_pre_bboxes, cl_cls_logits) = decoder(
-            [mb_reg_logits], [mb_cls_logits], [anchor_boxes], meta_info["img_shape"]
-        )
-        
-        # NMS
-        nms = NMS(
-            self.cfg.post_processing.score_th,
-            self.cfg.post_processing.iou_th,
-            self.cfg.post_processing.use_sigmoid,
-            None,
-            self.cfg.post_processing.pre_nms,
-            self.cfg.post_processing.post_nms,
-        )
+            mb_reg_preds = []
+            mb_cls_preds = []
+            mb_anchor_boxes = []
+            for (r, c, a, m) in zip(cl_reg_preds, cl_cls_preds, cl_anchor_boxes, cl_masks):
+                mb_reg_preds.append(r[i][m[i]])
+                mb_cls_preds.append(c[i][m[i]])
+                mb_anchor_boxes.append(a[i][m[i]])
 
-        (cl_pre_bboxes, cl_cls_logits) = nms(cl_pre_bboxes, cl_cls_logits)
+            result = self.nms(
+                mb_reg_preds,
+                mb_cls_preds,
+                mb_anchor_boxes,
+                meta_info[0]["img_shape"],
+                self.coder,
+                False,
+            )
 
-        mb_pre_bboxes = cl_pre_bboxes[0][0]
-        mb_cls_logits = cl_cls_logits[0][0]
+            mb_bboxes.append(result[0])
+            mb_scores.append(result[1])
+            mb_labels.append(result[2])
 
-        return mb_pre_bboxes, mb_cls_logits
+        return (mb_bboxes, mb_scores, mb_labels)
